@@ -57,22 +57,17 @@ class PresidioDeterministicScanner:
                     text=match_text,
                     start=match.start(),
                     end=match.end(),
-                    score=base_score,
+                    confidence_score=base_score,
                     action_taken=action
                 )
                 entities.append(entity)
 
-        # Apply redactions from end to start to avoid indexing shifts
-        entities_sorted = sorted(entities, key=lambda e: e.start, reverse=True)
-        for ent in entities_sorted:
-            if ent.action_taken == "redacted":
-                rep = f"[{ent.entity_type}_REDACTED]"
-                sanitized_text = sanitized_text[:ent.start] + rep + sanitized_text[ent.end:]
-            elif ent.action_taken == "tokenized":
-                rep = f"[TOK_{ent.entity_type}_{abs(hash(ent.text)) % 9999:04d}]"
+        # Apply redactions from right to left to preserve offsets
+        sorted_entities = sorted(entities, key=lambda x: x.start, reverse=True)
+        for ent in sorted_entities:
+            if policy in ["strict_redact", "tokenize"]:
+                rep = f"[{ent.entity_type}]" if policy == "strict_redact" else f"<TOKEN_{ent.entity_type}_{hash(ent.text)%1000:03d}>"
                 sanitized_text = sanitized_text[:ent.start] + rep + sanitized_text[ent.end:]
 
-        elapsed_ms = (time.perf_counter() - start_time) * 1000.0
-        return sanitized_text, entities, round(elapsed_ms, 2)
-
-presidio_scanner = PresidioDeterministicScanner()
+        duration_ms = (time.perf_counter() - start_time) * 1000.0
+        return sanitized_text, entities, round(duration_ms, 2)

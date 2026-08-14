@@ -89,7 +89,6 @@ export const SignalFeedView: React.FC<SignalFeedViewProps> = ({ spans }) => {
     };
   });
 
-  // Set default expanded to first signal if not set
   const activeExpandedId = expandedSignalId || (dynamicSignals[0]?.id ?? '');
 
   const filteredSignals = dynamicSignals.filter((sig) => {
