@@ -2,6 +2,8 @@
 
 This guide provides the complete engineering specification of the four governance layers, database configuration, and step-by-step deployment instructions for bare-metal Linux servers and GPU workstations.
 
+Based on the research paper: [Continuous Enterprise AI Governance (arXiv:2605.24737)](https://arxiv.org/html/2605.24737v1).
+
 ---
 
 ## 1. Governance Engine Technical Specification

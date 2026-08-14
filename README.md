@@ -223,6 +223,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ## Research and Standards Compliance
 
+- Continuous Enterprise AI Governance Architecture: [arXiv:2605.24737 (Full HTML Paper)](https://arxiv.org/html/2605.24737v1)
 - EU AI Act (Regulation 2024/1689): Article 26 (Deployer Obligations) and Article 26(6) (6-Month Automated Logging).
 - GDPR: Article 44 (Cross-Border Data Transfers) and Garante/GEDI Data Minimization Precedents.
 - ANSSI: Cybersecurity Guidelines for Artificial Intelligence Systems.
