@@ -22,6 +22,8 @@ Because LLMs produce non-deterministic outputs across dynamic prompt chains, ent
 
 Conformance transforms regulatory compliance into an automated, continuous runtime signal derived from real-time observability, deterministic sub-15ms filtering, on-premise Multi-SLM jury arbitration, and tamper-evident cryptographic hash chains.
 
+For the full engineering deep dive, server and GPU setup guide, see [ARCHITECTURE_AND_DEPLOYMENT.md](ARCHITECTURE_AND_DEPLOYMENT.md).
+
 ---
 
 ## System Architecture

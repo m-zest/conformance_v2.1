@@ -4,6 +4,7 @@ import { DashboardView } from './components/DashboardView';
 import { SignalFeedView } from './components/SignalFeedView';
 import { InspectorView } from './components/InspectorView';
 import { RegistryView } from './components/RegistryView';
+import { KnowledgeGraphView } from './components/KnowledgeGraphView';
 import { JuryPanelView } from './components/JuryPanelView';
 import { AuditVaultView } from './components/AuditVaultView';
 import { PitchDeckView } from './components/PitchDeckView';
@@ -104,6 +105,10 @@ export function App() {
 
         {activeTab === 'registry' && (
           <RegistryView />
+        )}
+
+        {activeTab === 'knowledge_graph' && (
+          <KnowledgeGraphView />
         )}
 
         {activeTab === 'jury' && (

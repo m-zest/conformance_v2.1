@@ -4,6 +4,7 @@ import {
   Layers, 
   Activity, 
   SearchCode, 
+  Database,
   Scale, 
   FileLock2, 
   Presentation, 
@@ -29,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'registry', label: 'Registry', icon: Layers, badge: null },
     { id: 'signal_feed', label: 'Signal feed', icon: Activity, badge: openSignalsCount },
     { id: 'inspector', label: 'Inspector', icon: SearchCode, badge: null },
+    { id: 'knowledge_graph', label: 'Knowledge Graph', icon: Database, badge: 'Ground Truth' },
     { id: 'jury', label: 'Jury & Policies', icon: Scale, badge: null },
     { id: 'vault', label: 'Audit Vault', icon: FileLock2, badge: null },
     { id: 'pitch', label: 'Pitch & Architecture', icon: Presentation, badge: null },
@@ -86,7 +88,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                     {item.badge !== null && (
                       <span
-                        className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-[#f87171]/20 text-[#f87171] font-mono"
+                        className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                          typeof item.badge === 'number'
+                            ? 'bg-[#f87171]/20 text-[#f87171] font-mono'
+                            : 'bg-[#1e293b] text-slate-300 font-mono text-[9px]'
+                        }`}
                       >
                         {item.badge}
                       </span>
