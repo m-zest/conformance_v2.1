@@ -39,3 +39,9 @@ yarn-error.log*
 Thumbs.db
 .idea/
 .vscode/
+
+# Local runtime data
+data/
+backend/data/
+*.pem
+frontend/tsconfig.tsbuildinfo

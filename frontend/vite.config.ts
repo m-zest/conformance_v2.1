@@ -1,11 +1,10 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
-// https://vitejs.dev/config/
+const gateway = process.env.GATEWAY_URL ?? "http://localhost:8000";
+
 export default defineConfig({
   plugins: [react()],
-  server: {
-    port: 5173,
-    host: true
-  }
-})
+  server: { proxy: { "/api": gateway, "/v1": gateway, "/.well-known": gateway } },
+  build: { sourcemap: false, chunkSizeWarningLimit: 900 },
+});

@@ -1,0 +1,2 @@
+presidio-analyzer>=2.2.355,<3.0
+spacy>=3.8,<3.9

@@ -1,24 +1,133 @@
-version: '3.8'
+# Conformance: full local stack.
+#
+#   docker compose up -d --build        start everything
+#   docker compose logs -f gateway      follow the gateway
+#   docker compose down                 stop (data is kept)
+#   docker compose down -v              stop and delete all data
+#
+# Works without a .env file. Copy .env.example to .env to change settings.
+
+name: conformance
+
+x-restart: &restart
+  restart: unless-stopped
 
 services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: conformance-backend
-    restart: always
-    ports:
-      - "8000:8000"
+  postgres:
+    <<: *restart
+    image: postgres:16-alpine
     environment:
-      - UPSTREAM_OPENAI_URL=https://api.openai.com/v1
+      POSTGRES_DB: conformance
+      POSTGRES_USER: conformance
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-conformance-local-only}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U conformance -d conformance"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
-  frontend:
+  gateway:
+    <<: *restart
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        INSTALL_NER: ${INSTALL_NER:-true}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://conformance:${POSTGRES_PASSWORD:-conformance-local-only}@postgres:5432/conformance
+      DATA_DIR: /data
+      # Upstream model providers. The defaults point at the bundled simulator.
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-http://simulator:9000/v1}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-simulator}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-http://simulator:9000}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-simulator}
+      SIMULATOR_URL: http://simulator:9000
+      # Demo content. Set DEMO_MODE and DEMO_SEED to false for a clean pilot installation.
+      DEMO_MODE: ${DEMO_MODE:-true}
+      DEMO_SEED: ${DEMO_SEED:-true}
+      DEMO_APP_KEY: ${DEMO_APP_KEY:-gw_demo_internal_assistant_local_only}
+      M365_COPILOT_MODE: ${M365_COPILOT_MODE:-demo}
+      GITHUB_COPILOT_MODE: ${GITHUB_COPILOT_MODE:-demo}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL-http://simulator:9000/hooks/alerts}
+      NER_ENABLED: ${NER_ENABLED:-true}
+      GUARD_LLM_ENABLED: ${GUARD_LLM_ENABLED:-false}
+      GUARD_LLM_URL: ${GUARD_LLM_URL:-http://ollama:11434}
+      DASHBOARD_URL: ${DASHBOARD_URL:-http://localhost:8080}
+      GATEWAY_PUBLIC_URL: ${GATEWAY_PUBLIC_URL:-http://localhost:8000}
+    volumes:
+      - gateway-data:/data
+    ports:
+      - "${BIND_ADDRESS:-0.0.0.0}:${GATEWAY_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      simulator:
+        condition: service_healthy
+
+  dashboard:
+    <<: *restart
     build:
       context: ./frontend
-      dockerfile: Dockerfile
-    container_name: conformance-frontend
-    restart: always
     ports:
-      - "80:80"
+      - "${BIND_ADDRESS:-0.0.0.0}:${DASHBOARD_PORT:-8080}:8080"
     depends_on:
-      - backend
+      gateway:
+        condition: service_healthy
+
+  # ----- everything below is for testing and demos only -----
+
+  simulator:
+    <<: *restart
+    build:
+      context: .
+      dockerfile: simulator/Dockerfile
+    environment:
+      GATEWAY_JWKS_URL: http://gateway:8000/.well-known/jwks.json
+      REQUIRE_COMPLIANCE_TOKEN: "true"
+      SIMULATOR_PUBLIC_URL: http://simulator:9000
+    ports:
+      - "${BIND_ADDRESS:-0.0.0.0}:${SIMULATOR_PORT:-9000}:9000"
+
+  demo-app:
+    <<: *restart
+    build:
+      context: .
+      dockerfile: demo-app/Dockerfile
+    environment:
+      GATEWAY_URL: http://gateway:8000
+      GATEWAY_KEY: ${DEMO_APP_KEY:-gw_demo_internal_assistant_local_only}
+      DASHBOARD_URL: ${DASHBOARD_URL:-http://localhost:8080}
+    ports:
+      - "${BIND_ADDRESS:-0.0.0.0}:${DEMO_APP_PORT:-8090}:8090"
+    depends_on:
+      gateway:
+        condition: service_healthy
+
+  # Optional guard model. Start with:  docker compose --profile guard up -d
+  # and set GUARD_LLM_ENABLED=true in .env.
+  ollama:
+    <<: *restart
+    image: ollama/ollama:latest
+    profiles: ["guard"]
+    volumes:
+      - ollama:/root/.ollama
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    profiles: ["guard"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["ollama", "pull", "${GUARD_LLM_MODEL:-llama-guard3:1b}"]
+    restart: on-failure
+    depends_on:
+      - ollama
+
+volumes:
+  pgdata:
+  gateway-data:
+  ollama:
