@@ -44,8 +44,9 @@ async def _series(session: AsyncSession, start: datetime, end: datetime, unit: s
     rows = (await session.execute(select(
         bucket, func.count(R.id), func.sum(case((R.new_finding_count > 0, 1), else_=0)),
         func.sum(case((R.action == "blocked", 1), else_=0)), func.sum(case((R.action == "masked", 1), else_=0)),
+        func.sum(case((and_(R.finding_count > 0, R.action.not_in(("blocked", "masked"))), 1), else_=0)),
     ).where(R.ts >= start, R.ts < end, *where).group_by(bucket).order_by(bucket))).all()
-    found = {bucket_to_iso(b): (c, int(_n(f)), int(_n(bl)), int(_n(m))) for b, c, f, bl, m in rows}
+    found = {bucket_to_iso(b): (c, int(_n(f)), int(_n(bl)), int(_n(m)), int(_n(lg))) for b, c, f, bl, m, lg in rows}
     step = timedelta(hours=1) if unit == "hour" else timedelta(days=1)
     cursor = start.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0)
     if unit == "day":
@@ -53,8 +54,8 @@ async def _series(session: AsyncSession, start: datetime, end: datetime, unit: s
     out = []
     while cursor < end:
         key = cursor.strftime("%Y-%m-%dT%H:%M:%SZ")
-        c, f, bl, m = found.get(key, (0, 0, 0, 0))
-        out.append({"t": key, "requests": c, "flagged": f, "blocked": bl, "masked": m})
+        c, f, bl, m, lg = found.get(key, (0, 0, 0, 0, 0))
+        out.append({"t": key, "requests": c, "flagged": f, "blocked": bl, "masked": m, "logged": lg})
         cursor += step
     return out
 

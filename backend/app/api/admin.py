@@ -18,7 +18,7 @@ from ..db import get_session, utcnow
 from ..detection.engine import DETECTOR_SET_VERSION, Redactor, engine, finalize_findings
 from ..detection.model import ACTION_RANK, CATEGORIES, MASKABLE, SEVERITY, SEVERITY_NAMES, entity_label
 from ..gateway.identity import directory
-from ..models import (Admin, AlertRule, ApiKey, Application, AuditLog, LedgerEntry, Notification, Policy,
+from ..models import (Admin, AlertRule, ApiKey, Application, AuditLog, CopilotUsageDaily, LedgerEntry, Notification, Policy,
                       RequestLog, Setting, User, new_id)
 from ..policy import apply_policy, normalize_rules, policies, to_view
 from ..recorder import recorder
@@ -82,11 +82,18 @@ async def list_apps(range: str = "7d", _: Admin = Depends(any_role), session: As
         ApiKey.revoked_at.is_(None)).group_by(ApiKey.app_id))).all())
     week = dict((await session.execute(select(R.app_id, func.sum(R.cost_usd)).where(
         R.ts >= end - timedelta(days=7)).group_by(R.app_id))).all())
+    # GitHub Copilot has no per-interaction records, only daily usage: report chat requests and active developers.
+    gh_users, gh_requests = (await session.execute(select(
+        func.count(func.distinct(CopilotUsageDaily.login)), func.sum(CopilotUsageDaily.interactions)).where(
+        CopilotUsageDaily.day >= start.date(), CopilotUsageDaily.day <= end.date()))).one()
     out = []
     for a in apps:
         policy = pols.get(a.policy_id) or (default if a.kind == "gateway" else None)
         item = _app_public(a, stats.get(a.id), policy, keys.get(a.id, 0))
         item["cost_projection_30d"] = round((week.get(a.id) or 0) / 7 * 30, 2)
+        item["content_visible"] = a.id != "github-copilot"
+        if a.id == "github-copilot":
+            item.update(users=gh_users or 0, requests=int(gh_requests or 0), flagged=None)
         out.append(item)
     return out
 
@@ -405,6 +412,7 @@ async def system_settings(_: Admin = Depends(any_role), session: AsyncSession = 
                     "ttl_seconds": settings.signing_ttl},
         "identity": {"oidc_enabled": bool(settings.oidc_issuer), "oidc_issuer": settings.oidc_issuer},
         "upstreams": {"openai": settings.openai_base_url, "anthropic": settings.anthropic_base_url},
+        "gateway_url": settings.gateway_public_url,
         "notifications": {"channels": notifications.channels(), "min_severity": settings.notify_min_severity,
                           "recent": [{"ts": iso(n.ts), "channel": n.channel, "subject": n.subject,
                                       "status": n.status, "detail": n.detail} for n in recent]},

@@ -44,6 +44,7 @@ class Settings:
         self.session_hours = _int("SESSION_HOURS", 8)
         self.cookie_secure = _bool("COOKIE_SECURE", False)
         self.dashboard_url = _str("DASHBOARD_URL", "http://localhost:8080").rstrip("/")
+        self.gateway_public_url = _str("GATEWAY_PUBLIC_URL", "http://localhost:8000").rstrip("/")
 
         # Upstream model providers
         self.openai_base_url = _str("OPENAI_BASE_URL", "http://localhost:9000/v1").rstrip("/")

@@ -19,7 +19,7 @@ import logging
 import random
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 
 from demo import corpus, synth
 
@@ -156,32 +156,41 @@ async def seed(days: int | None = None, seed_value: int = 20261113) -> int:
             log.info("  %d of %d", index, len(events))
 
     async with SessionLocal() as session:
-        # Older alerts are closed so the inbox looks like one that is being worked.
-        cutoff = now - timedelta(days=4)
-        old = (await session.execute(select(Alert).where(Alert.created_at < cutoff))).scalars().all()
-        for i, alert in enumerate(old):
-            alert.status = "false_positive" if i % 9 == 0 else "resolved"
-            session.add(AlertEvent(alert_id=alert.id, ts=alert.last_seen_at + timedelta(hours=3),
-                                   actor="demo data", action=alert.status,
-                                   note="Closed by the demo seeder to illustrate a worked inbox."))
-        mid = (await session.execute(select(Alert).where(
-            Alert.created_at >= cutoff, Alert.created_at < now - timedelta(days=1)).limit(40))).scalars().all()
-        for i, alert in enumerate(mid):
-            if i % 3 == 0:
-                alert.status = "acknowledged"
-                alert.assignee = settings.admin_email
         session.add(Setting(key="demo_data", value={"loaded_at": now.isoformat(), "interactions": len(events),
                                                     "days": days, "company": roster["company"]}))
         await session.commit()
     return len(events)
 
 
-async def seed_if_empty() -> None:
+async def work_the_inbox() -> None:
+    """Close older demo alerts so the inbox looks like one that is being worked, not a backlog."""
+    now = utcnow()
+    cutoff = now - timedelta(days=2)
+    async with SessionLocal() as session:
+        old = (await session.execute(select(Alert).where(Alert.created_at < cutoff, Alert.status == "open"))).scalars().all()
+        for i, alert in enumerate(old):
+            alert.status = "false_positive" if i % 9 == 0 else "resolved"
+            session.add(AlertEvent(alert_id=alert.id, ts=alert.last_seen_at + timedelta(hours=3),
+                                   actor="demo data", action=alert.status,
+                                   note="Closed by the demo seeder to illustrate a worked inbox."))
+        recent = (await session.execute(select(Alert).where(
+            Alert.created_at >= cutoff, Alert.created_at < now - timedelta(hours=20), Alert.status == "open"))).scalars().all()
+        for i, alert in enumerate(recent):
+            if i % 3 == 0:
+                alert.status = "acknowledged"
+                alert.assignee = settings.admin_email
+                session.add(AlertEvent(alert_id=alert.id, ts=alert.last_seen_at + timedelta(hours=1),
+                                       actor="demo data", action="acknowledged", note=""))
+        await session.commit()
+
+
+async def seed_if_empty() -> bool:
     async with SessionLocal() as session:
         if (await session.execute(select(func.count(RequestLog.id)))).scalar_one() > 0:
-            return
+            return False
     count = await seed()
     log.info("demo data ready: %d interactions", count)
+    return True
 
 
 async def _main() -> None:
@@ -192,6 +201,7 @@ async def _main() -> None:
     await init_models()
     await bootstrap()
     print(f"seeded {await seed(args.days)} interactions")
+    await work_the_inbox()
 
 
 if __name__ == "__main__":

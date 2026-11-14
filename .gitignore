@@ -44,3 +44,4 @@ Thumbs.db
 data/
 backend/data/
 *.pem
+frontend/tsconfig.tsbuildinfo

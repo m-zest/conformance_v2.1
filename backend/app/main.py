@@ -53,8 +53,11 @@ async def lifespan(_: FastAPI):
     await bootstrap.run()
     recorder.start()
     if settings.demo_mode and settings.demo_seed:
-        from .demo.seed import seed_if_empty
-        await seed_if_empty()
+        from .demo.seed import seed_if_empty, work_the_inbox
+        if await seed_if_empty():
+            for connector_id in scheduler.connectors:   # first import of the simulated vendor history
+                await scheduler.sync(connector_id)
+            await work_the_inbox()
     scheduler.start()
     maintenance = asyncio.create_task(_maintenance(), name="maintenance")
     if settings.using_default_admin_password:

@@ -149,11 +149,13 @@ class M365CopilotConnector:
             for f in findings:
                 f.action = "log"
             response = pair.get("response") or {}
+            created = _parse_ts(prompt["createdDateTime"])
             await recorder.persist(Record(
                 user_id=ref.id, user_label=ref.label, app_id=self.id, app_name="Microsoft 365 Copilot", policy=policy,
-                ts=_parse_ts(prompt["createdDateTime"]), source="m365_copilot", external_id=ids[key],
+                ts=created, source="m365_copilot", external_id=ids[key],
                 protocol="connector", provider="microsoft", host_app=host_app(prompt.get("appClass")),
                 action="observed", segments=segments, findings=findings,
-                response_text=plain_text(response.get("body"))))
+                response_text=plain_text(response.get("body"))),
+                notify=utcnow() - created < timedelta(hours=24))   # no notification flood for imported history
             count += 1
         return count
