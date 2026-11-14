@@ -24,6 +24,8 @@ from .recorder import recorder
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("conformance")
+for noisy in ("httpx", "httpcore", "presidio-analyzer"):   # per-request lines and model label warnings
+    logging.getLogger(noisy).setLevel(logging.WARNING if noisy != "presidio-analyzer" else logging.ERROR)
 
 
 async def _maintenance() -> None:

@@ -160,7 +160,11 @@ export function InteractionsTable(props: { items: any[]; onOpen: (id: string) =>
                 {r.finding_count > 0 ? (
                   <div className="row-wrap">
                     <SeverityBadge level={r.severity} />
-                    <span className="secondary">{r.finding_count} {r.finding_count === 1 ? "item" : "items"}</span>
+                    <span className="secondary">
+                      {r.new_finding_count === r.finding_count
+                        ? `${r.finding_count} ${r.finding_count === 1 ? "item" : "items"}`
+                        : `${r.new_finding_count} new, ${r.finding_count - r.new_finding_count} seen before`}
+                    </span>
                   </div>
                 ) : <span className="muted">Nothing</span>}
               </td>

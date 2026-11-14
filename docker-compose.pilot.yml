@@ -1,0 +1,24 @@
+# Pilot installation: the gateway, the dashboard and the database, without the
+# simulator and the sample tool.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.pilot.yml up -d --build
+#
+# Set DEMO_MODE=false, DEMO_SEED=false and your model provider in .env first.
+
+services:
+  gateway:
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+    environment:
+      DEMO_MODE: ${DEMO_MODE:-false}
+      DEMO_SEED: ${DEMO_SEED:-false}
+      M365_COPILOT_MODE: ${M365_COPILOT_MODE:-disabled}
+      GITHUB_COPILOT_MODE: ${GITHUB_COPILOT_MODE:-disabled}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+
+  simulator:
+    profiles: ["demo"]
+
+  demo-app:
+    profiles: ["demo"]
